@@ -154,7 +154,7 @@ async def call_openai(prompt: str) -> dict:
         raise ValueError("OPENAI_API_KEY 환경변수가 설정되지 않았습니다.")
     async with httpx.AsyncClient() as client:
         r = await client.post(
-            "https://api.openai.com/v1/chat/completions",
+            os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1") + "/chat/completions",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}",
                      "Content-Type": "application/json"},
             json={

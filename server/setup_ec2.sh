@@ -1,6 +1,6 @@
 #!/bin/bash
 # FollowMe 서버 EC2 자동 설치 스크립트
-# Ubuntu 22.04 LTS (t3.large 이상 권장) 에서 실행
+# Ubuntu 24.04 LTS 에서 실행
 # 사용법: chmod +x setup_ec2.sh && ./setup_ec2.sh
 
 set -e
@@ -10,25 +10,17 @@ echo "====== FollowMe 서버 설치 시작 ======"
 echo "[1/6] 시스템 업데이트..."
 sudo apt-get update -y && sudo apt-get upgrade -y
 
-# 2. Python 3.11 + pip 설치
+# 2. Python 3.12 + pip 설치 (Ubuntu 24.04 기본)
 echo "[2/6] Python 설치..."
-sudo apt-get install -y python3.11 python3.11-venv python3-pip curl git
+sudo apt-get install -y python3 python3-venv python3-pip curl git
 
-# 3. Ollama 설치 + 모델 다운로드
-echo "[3/6] Ollama 설치..."
-curl -fsSL https://ollama.ai/install.sh | sh
-
-# Ollama를 백그라운드로 시작하고 모델 pull
-sudo systemctl enable ollama
-sudo systemctl start ollama
-sleep 5
-echo "  gemma3:1b 모델 다운로드 중 (약 815MB)..."
-ollama pull gemma3:1b
+# 3. Ollama 설치 스킵 (OpenAI API 사용)
+echo "[3/6] Ollama 스킵 (OpenAI API 모드)..."
 
 # 4. FastAPI 서버 의존성 설치
 echo "[4/6] Python 패키지 설치..."
-cd ~/followme-server 2>/dev/null || mkdir -p ~/followme-server && cd ~/followme-server
-python3.11 -m venv venv
+mkdir -p ~/followme-server && cd ~/followme-server
+python3 -m venv venv
 source venv/bin/activate
 pip install fastapi==0.115.0 uvicorn[standard]==0.30.6 httpx==0.27.2 pydantic==2.9.2 python-dotenv==1.0.1
 

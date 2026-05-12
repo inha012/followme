@@ -1,10 +1,19 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:cupertino_http/cupertino_http.dart';
 import 'package:follow_me/core/constants/app_constants.dart';
 import 'package:follow_me/core/services/user_data_service.dart';
 import 'package:follow_me/features/daily_prediction/models/prediction_result.dart';
 import 'package:follow_me/features/diary/data/diary_database.dart';
+
+http.Client _buildClient() {
+  if (Platform.isIOS || Platform.isMacOS) {
+    return CupertinoClient.defaultSessionConfiguration();
+  }
+  return http.Client();
+}
 
 class PredictionApiService {
   static String? lastError;
@@ -40,13 +49,15 @@ class PredictionApiService {
       final uri = Uri.parse('${AppConstants.serverBaseUrl}/predict');
       debugPrint('[API] POST → $uri');
 
-      final response = await http
+      final client = _buildClient();
+      final response = await client
           .post(
             uri,
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 180));
+      client.close();
 
       debugPrint('[API] status: ${response.statusCode}');
 
