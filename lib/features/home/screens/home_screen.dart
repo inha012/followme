@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:follow_me/core/services/gemma_service.dart';
+import 'package:follow_me/core/services/prediction_api_service.dart';
 import 'package:follow_me/core/services/user_data_service.dart';
 import 'package:follow_me/features/daily_prediction/services/prediction_service.dart';
 import 'package:follow_me/features/diary/screens/diary_write_screen.dart';
@@ -58,11 +58,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await _loadPrediction();
     if (!mounted) return;
     setState(() => _isGenerating = false);
-    if (GemmaService.lastError != null) {
+    if (PredictionApiService.lastError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '오류: ${GemmaService.lastError}',
+            '오류: ${PredictionApiService.lastError}',
             style: const TextStyle(fontSize: 12),
           ),
           backgroundColor: const Color(0xFFD94C4C),
