@@ -1,13 +1,17 @@
 import json
 import os
 import re
+import sqlite3
 from datetime import datetime, timedelta
 from typing import List, Optional
 
+import faiss
 import httpx
+import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sentence_transformers import SentenceTransformer
 
 app = FastAPI(title="FollowMe Prediction API")
 
@@ -32,6 +36,57 @@ WEATHER_CITY    = os.getenv("WEATHER_CITY", "Seoul")
 
 DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"]
 
+# ── RAG 설정 ───────────────────────────────────────────────────────────────────
+DATA_DIR   = os.path.expanduser("~/followme-server/data")
+EMBED_DIM  = 384
+os.makedirs(DATA_DIR, exist_ok=True)
+
+print("임베딩 모델 로딩 중...")
+_embed_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+print("임베딩 모델 로딩 완료")
+
+def _diary_db() -> sqlite3.Connection:
+    conn = sqlite3.connect(f"{DATA_DIR}/diaries.db")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS diaries (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id  TEXT NOT NULL,
+            text     TEXT NOT NULL,
+            date     TEXT NOT NULL,
+            faiss_id INTEGER NOT NULL
+        )
+    """)
+    conn.commit()
+    return conn
+
+def _load_index(user_id: str) -> faiss.IndexFlatL2:
+    path = f"{DATA_DIR}/{user_id}.index"
+    if os.path.exists(path):
+        return faiss.read_index(path)
+    return faiss.IndexFlatL2(EMBED_DIM)
+
+def _save_index(user_id: str, index: faiss.IndexFlatL2) -> None:
+    faiss.write_index(index, f"{DATA_DIR}/{user_id}.index")
+
+def _get_relevant_diaries(user_id: str, context: str, top_k: int = 5) -> list[str]:
+    index = _load_index(user_id)
+    if index.ntotal == 0:
+        return []
+    vec = _embed_model.encode([context]).astype(np.float32)
+    k = min(top_k, index.ntotal)
+    _, faiss_ids = index.search(vec, k)
+    conn = _diary_db()
+    results = []
+    for fid in faiss_ids[0]:
+        row = conn.execute(
+            "SELECT text, date FROM diaries WHERE user_id=? AND faiss_id=?",
+            (user_id, int(fid)),
+        ).fetchone()
+        if row:
+            results.append(f"[{row[1]}] {row[0]}")
+    conn.close()
+    return results
+
 # ── 요청/응답 스키마 ───────────────────────────────────────────────────────────
 class ScheduleEntry(BaseModel):
     name: str
@@ -42,12 +97,18 @@ class ScheduleEntry(BaseModel):
     endMinute: int
 
 class PredictRequest(BaseModel):
+    user_id: Optional[str] = None
     birthdate: Optional[str] = None
     gender: Optional[str] = None
     my_scores: Optional[List[int]] = []
     ideal_scores: Optional[List[int]] = []
     schedule: Optional[List[ScheduleEntry]] = []
     diary: Optional[str] = None
+
+class DiaryRequest(BaseModel):
+    user_id: str
+    text: str
+    date: str
 
 class PredictResponse(BaseModel):
     fortune: str
@@ -86,7 +147,7 @@ async def get_tomorrow_weather() -> str:
         return "날씨 정보를 가져올 수 없습니다."
 
 # ── 프롬프트 조립 ──────────────────────────────────────────────────────────────
-def build_prompt(req: PredictRequest, weather: str) -> str:
+def build_prompt(req: PredictRequest, weather: str, past_diaries: list[str] | None = None) -> str:
     birthdate_str = req.birthdate or "정보 없음"
     gender_str = "남성" if req.gender == "M" else ("여성" if req.gender == "F" else "정보 없음")
     my_avg    = f"{sum(req.my_scores)/len(req.my_scores):.1f}"    if req.my_scores    else "-"
@@ -103,6 +164,11 @@ def build_prompt(req: PredictRequest, weather: str) -> str:
         schedule_str = "등록된 고정 일정 없음"
 
     diary_section = f"\n오늘의 일기:\n{req.diary}" if req.diary else ""
+    past_section  = (
+        "\n\n과거 일기 패턴 (유사한 상황의 기록, 참고용):\n"
+        + "\n".join(f"- {d}" for d in past_diaries)
+        if past_diaries else ""
+    )
 
     return f"""아래 정보를 바탕으로 내일의 운세와 미션을 한국어로 생성하세요.
 
@@ -115,7 +181,7 @@ def build_prompt(req: PredictRequest, weather: str) -> str:
 내일 날씨: {weather}
 
 주간 고정 일정:
-{schedule_str}{diary_section}
+{schedule_str}{diary_section}{past_section}
 
 반드시 아래 JSON 형식만 출력하세요 (다른 설명 없이):
 {{"fortune":"운세를 2~3문장으로 작성","missions":["미션1","미션2","미션3","미션4"]}}"""
@@ -169,6 +235,22 @@ async def call_openai(prompt: str) -> dict:
     return parse_llm_response(raw)
 
 # ── 엔드포인트 ─────────────────────────────────────────────────────────────────
+@app.post("/diary")
+async def add_diary(req: DiaryRequest):
+    vec = _embed_model.encode([req.text]).astype(np.float32)
+    index = _load_index(req.user_id)
+    faiss_id = index.ntotal
+    index.add(vec)
+    _save_index(req.user_id, index)
+    conn = _diary_db()
+    conn.execute(
+        "INSERT INTO diaries (user_id, text, date, faiss_id) VALUES (?,?,?,?)",
+        (req.user_id, req.text, req.date, faiss_id),
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "ok", "total": index.ntotal}
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "provider": LLM_PROVIDER,
@@ -178,7 +260,11 @@ async def health():
 async def predict(req: PredictRequest):
     try:
         weather = await get_tomorrow_weather()
-        prompt  = build_prompt(req, weather)
+        past_diaries: list[str] = []
+        if req.user_id:
+            context = req.diary or f"성향:{req.my_scores} 이상향:{req.ideal_scores}"
+            past_diaries = _get_relevant_diaries(req.user_id, context)
+        prompt  = build_prompt(req, weather, past_diaries)
         result  = await call_openai(prompt) if LLM_PROVIDER == "openai" \
                   else await call_ollama(prompt)
         return PredictResponse(**result)

@@ -36,8 +36,11 @@ class PredictionApiService {
           .where((d) => d.createdAt.toIso8601String().startsWith(today))
           .toList();
 
+      final userId = await UserDataService.getUserId();
+
       // ── 요청 바디 조립 ──────────────────────────────────────────────
       final body = {
+        'user_id':      userId,
         'birthdate':    birthdate?.toIso8601String().split('T').first,
         'gender':       gender,
         'my_scores':    myScores,
@@ -71,5 +74,29 @@ class PredictionApiService {
       debugPrint('[API] exception: $e');
     }
     return null;
+  }
+
+  /// 일기를 서버에 동기화 (RAG 저장용). 실패해도 로컬 저장에 영향 없음.
+  static Future<void> syncDiary(String text, DateTime date) async {
+    try {
+      final userId = await UserDataService.getUserId();
+      final uri = Uri.parse('${AppConstants.serverBaseUrl}/diary');
+      final client = _buildClient();
+      await client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'user_id': userId,
+              'text': text,
+              'date': date.toIso8601String().split('T').first,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+      client.close();
+      debugPrint('[API] diary synced');
+    } catch (e) {
+      debugPrint('[API] diary sync failed (ignored): $e');
+    }
   }
 }

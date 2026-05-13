@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:follow_me/core/services/prediction_api_service.dart';
 import 'package:follow_me/features/diary/data/diary_database.dart';
 import 'package:follow_me/features/diary/models/diary_entry.dart';
 import 'package:follow_me/shared/widgets/teal_button.dart';
@@ -166,12 +167,11 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                   onTap: () async {
                     final text = _controller.text.trim();
                     if (text.isEmpty) return;
+                    final date = targetDate ?? DateTime.now();
                     await DiaryDatabase.insert(
-                      DiaryEntry(
-                        text: text,
-                        createdAt: targetDate ?? DateTime.now(),
-                      ),
+                      DiaryEntry(text: text, createdAt: date),
                     );
+                    PredictionApiService.syncDiary(text, date);
                     if (!context.mounted) return;
                     Navigator.of(context).pop();
                   },

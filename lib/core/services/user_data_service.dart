@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:follow_me/features/schedule_input/models/timetable_entry.dart';
 
 class UserDataService {
   static const _keyName = 'user_name';
+  static const _keyUserId = 'user_id';
   static const _keyBirthdate = 'user_birthdate';
   static const _keyGender = 'user_gender';
   static const _keyMyScores = 'my_personality_scores';
@@ -85,6 +87,26 @@ class UserDataService {
   static Future<void> saveIdealScores(List<int> scores) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyIdealScores, jsonEncode(scores));
+  }
+
+  static String _generateUserId() {
+    final rand = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rand.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    String hex(int b) => b.toRadixString(16).padLeft(2, '0');
+    final s = bytes.map(hex).join();
+    return '${s.substring(0, 8)}-${s.substring(8, 12)}-${s.substring(12, 16)}-${s.substring(16, 20)}-${s.substring(20)}';
+  }
+
+  static Future<String> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    var id = prefs.getString(_keyUserId);
+    if (id == null) {
+      id = _generateUserId();
+      await prefs.setString(_keyUserId, id);
+    }
+    return id;
   }
 
   static Future<int> getTotalMissionsDone() async {
