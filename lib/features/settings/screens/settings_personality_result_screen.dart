@@ -1,6 +1,38 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:follow_me/core/services/user_data_service.dart';
+import 'package:follow_me/core/utils/personality_type_utils.dart';
 import 'package:follow_me/shared/widgets/teal_button.dart';
+
+// 공통으로 쓰이는 텍스트 스타일을 상수로 추출해 중복을 줄입니다.
+const _titleTextStyle = TextStyle(
+  fontFamily: 'Pretendard',
+  fontWeight: FontWeight.w700,
+  fontSize: 24,
+  height: 32 / 24,
+  color: Color(0xFF262626),
+);
+const _labelTextStyle = TextStyle(
+  fontFamily: 'Pretendard',
+  fontWeight: FontWeight.w400,
+  fontSize: 15,
+  height: 22 / 15,
+  color: Color(0xFF6F6F6F),
+);
+const _typeNameTextStyle = TextStyle(
+  fontFamily: 'Pretendard',
+  fontWeight: FontWeight.w600,
+  fontSize: 16,
+  height: 22 / 16,
+  color: Color(0xFF222222),
+);
+const _descTextStyle = TextStyle(
+  fontFamily: 'Pretendard',
+  fontWeight: FontWeight.w400,
+  fontSize: 15,
+  height: 22 / 15,
+  color: Color(0xFF525252),
+);
 
 class SettingsPersonalityResultScreen extends StatelessWidget {
   const SettingsPersonalityResultScreen({
@@ -8,10 +40,12 @@ class SettingsPersonalityResultScreen extends StatelessWidget {
     required this.isIdeal,
     required this.scores,
     required this.onDone,
+    this.gender,
   });
 
   final bool isIdeal;
   final List<int> scores;
+  final String? gender;
   final VoidCallback onDone;
 
   @override
@@ -23,10 +57,9 @@ class SettingsPersonalityResultScreen extends StatelessWidget {
     final textColor =
         isIdeal ? const Color(0xFFB8920E) : const Color(0xFF208484);
     final label = isIdeal ? '이상향 성향' : '현재 성향';
-    final typeName = isIdeal ? '수호자 성향' : '옹호자 성향';
-    final description = isIdeal
-        ? '안정적이고 신뢰할 수 있는 수호자 성향을 추구하고 있습니다.'
-        : '모험심이 강하고 세상 모든 것에 다정한 옹호자 성향입니다.';
+    final personality = classifyPersonality(scores, gender: gender);
+    final typeName = personality.name;
+    final description = personality.description;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -45,16 +78,7 @@ class SettingsPersonalityResultScreen extends StatelessWidget {
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        const Text(
-                          '성향 분석 결과',
-                          style: TextStyle(
-                            fontFamily: 'Pretendard',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 24,
-                            height: 32 / 24,
-                            color: Color(0xFF262626),
-                          ),
-                        ),
+                        const Text('성향 분석 결과', style: _titleTextStyle),
                         Align(
                           alignment: Alignment.centerRight,
                           child: GestureDetector(
@@ -69,16 +93,7 @@ class SettingsPersonalityResultScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 39),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 15,
-                        height: 22 / 15,
-                        color: Color(0xFF6F6F6F),
-                      ),
-                    ),
+                    Text(label, style: _labelTextStyle),
                     const SizedBox(height: 14),
                     Container(
                       width: double.infinity,
@@ -90,38 +105,26 @@ class SettingsPersonalityResultScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            typeName,
-                            style: const TextStyle(
-                              fontFamily: 'Pretendard',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                              height: 22 / 16,
-                              color: Color(0xFF222222),
-                            ),
-                          ),
+                          Text(typeName, style: _typeNameTextStyle),
                           const SizedBox(height: 14),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               SizedBox(
-                                width: 75,
-                                height: 72,
+                                width: 100,
+                                height: 100,
                                 child: CustomPaint(
-                                  painter: _TrianglePainter(accentColor),
+                                  painter: _HexagonPainter(
+                                    accentColor: accentColor,
+                                    scores: scores,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   description,
-                                  style: const TextStyle(
-                                    fontFamily: 'Pretendard',
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 15,
-                                    height: 22 / 15,
-                                    color: Color(0xFF525252),
-                                  ),
+                                  style: _descTextStyle,
                                 ),
                               ),
                             ],
@@ -180,26 +183,82 @@ class SettingsPersonalityResultScreen extends StatelessWidget {
   }
 }
 
-class _TrianglePainter extends CustomPainter {
-  const _TrianglePainter(this.color);
+class _HexagonPainter extends CustomPainter {
+  const _HexagonPainter({
+    required this.accentColor,
+    required this.scores,
+  });
 
-  final Color color;
+  final Color accentColor;
+  final List<int> scores;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
+    final centerX = size.width / 2;
+    final centerY = size.height / 2;
+    final maxRadius = size.width / 2.5;
+
+    final bgPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.1)
       ..style = PaintingStyle.fill;
 
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, size.height / 2)
-      ..lineTo(0, size.height)
-      ..close();
+    const sides = 6;
+    final degToRad = math.pi / 180;
+    final bgPoints = <Offset>[];
+    for (int i = 0; i < sides; i++) {
+      final angle = (i * 60 - 90) * degToRad;
+      final x = centerX + maxRadius * math.cos(angle);
+      final y = centerY + maxRadius * math.sin(angle);
+      bgPoints.add(Offset(x, y));
+    }
 
-    canvas.drawPath(path, paint);
+    final bgPath = Path()..moveTo(bgPoints[0].dx, bgPoints[0].dy);
+    for (int i = 1; i < sides; i++) {
+      bgPath.lineTo(bgPoints[i].dx, bgPoints[i].dy);
+    }
+    bgPath.close();
+    canvas.drawPath(bgPath, bgPaint);
+
+    final borderPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    canvas.drawPath(bgPath, borderPaint);
+
+    final dataPoints = <Offset>[];
+    for (int i = 0; i < sides; i++) {
+      final angle = (i * 60 - 90) * degToRad;
+      final normalized = ((i < scores.length ? scores[i] : 0) / 25).clamp(0.0, 1.0);
+      final radius = maxRadius * normalized;
+      final x = centerX + radius * math.cos(angle);
+      final y = centerY + radius * math.sin(angle);
+      dataPoints.add(Offset(x, y));
+    }
+
+    final dataPath = Path()..moveTo(dataPoints[0].dx, dataPoints[0].dy);
+    for (int i = 1; i < sides; i++) {
+      dataPath.lineTo(dataPoints[i].dx, dataPoints[i].dy);
+    }
+    dataPath.close();
+
+    final fillPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(dataPath, fillPaint);
+
+    final linePaint = Paint()
+      ..color = accentColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawPath(dataPath, linePaint);
+
+    final centerPointPaint = Paint()
+      ..color = accentColor
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(centerX, centerY), 4, centerPointPaint);
   }
 
   @override
-  bool shouldRepaint(_TrianglePainter old) => old.color != color;
+  bool shouldRepaint(_HexagonPainter old) =>
+      old.accentColor != accentColor || old.scores != scores;
 }
