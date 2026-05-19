@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:follow_me/core/services/user_data_service.dart';
+import 'package:follow_me/core/utils/personality_type_utils.dart';
 import 'package:follow_me/features/schedule_input/screens/onboarding_timetable_screen.dart';
 import 'package:follow_me/shared/widgets/next_button.dart';
 
@@ -22,99 +23,108 @@ class OnboardingPersonalityResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: 점수 기반 성향 분류 로직 추가 후 아래 placeholder 교체
-    const myTypeName = '옹호자 성향';
-    const myTypeDesc = '모험심이 강하고 세상 모든 것에 다정한 옹호자 성향입니다.';
-    const idealTypeName = '수호자 성향';
-    const idealTypeDesc = '안정적이고 신뢰할 수 있는 수호자 성향을 추구하고 있습니다.';
-
     return Scaffold(
       backgroundColor: _bgColor,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 33),
-                    const Text(
-                      '성향 분석 결과',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 24,
-                        height: 32 / 24,
-                        color: _titleColor,
-                      ),
+        child: FutureBuilder<String?>(
+          future: UserDataService.getGender(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF208484)),
+              );
+            }
+
+            final gender = snapshot.data;
+            final myType = classifyPersonality(myPersonalityScores, gender: gender);
+            final idealType = classifyPersonality(idealPersonalityScores, gender: gender);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 33),
+                        const Text(
+                          '성향 분석 결과',
+                          style: TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 24,
+                            height: 32 / 24,
+                            color: _titleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 39),
+                        const Text(
+                          '현재 성향',
+                          style: TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 15,
+                            height: 22 / 15,
+                            color: _labelColor,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _PersonalityCard(
+                          bgColor: const Color(0xFFE9F7F7),
+                          accentColor: const Color(0xFF208484),
+                          typeName: myType.name,
+                          description: myType.description,
+                          scores: myPersonalityScores,
+                        ),
+                        const SizedBox(height: 49),
+                        const Text(
+                          '이상향 성향',
+                          style: TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 15,
+                            height: 22 / 15,
+                            color: _labelColor,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _PersonalityCard(
+                          bgColor: const Color(0xFFFEF6DA),
+                          accentColor: const Color(0xFFEEC22A),
+                          typeName: idealType.name,
+                          description: idealType.description,
+                          scores: idealPersonalityScores,
+                        ),
+                        const SizedBox(height: 32),
+                      ],
                     ),
-                    const SizedBox(height: 39),
-                    const Text(
-                      '현재 성향',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 15,
-                        height: 22 / 15,
-                        color: _labelColor,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _PersonalityCard(
-                      bgColor: const Color(0xFFE9F7F7),
-                      accentColor: const Color(0xFF208484),
-                      typeName: myTypeName,
-                      description: myTypeDesc,
-                      scores: myPersonalityScores,
-                    ),
-                    const SizedBox(height: 49),
-                    const Text(
-                      '이상향 성향',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 15,
-                        height: 22 / 15,
-                        color: _labelColor,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _PersonalityCard(
-                      bgColor: const Color(0xFFFEF6DA),
-                      accentColor: const Color(0xFFEEC22A),
-                      typeName: idealTypeName,
-                      description: idealTypeDesc,
-                      scores: idealPersonalityScores,
-                    ),
-                    const SizedBox(height: 32),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: NextButton(
-                onTap: () async {
-                  await UserDataService.savePersonalityScores(
-                    myScores: myPersonalityScores,
-                    idealScores: idealPersonalityScores,
-                  );
-                  if (!context.mounted) return;
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => OnboardingTimetableScreen(
-                        userName: userName,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: NextButton(
+                    onTap: () async {
+                      await UserDataService.savePersonalityScores(
+                        myScores: myPersonalityScores,
+                        idealScores: idealPersonalityScores,
+                      );
+                      if (!context.mounted) return;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => OnboardingTimetableScreen(
+                            userName: userName,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -213,9 +223,11 @@ class _HexagonPainter extends CustomPainter {
       ..color = accentColor.withValues(alpha: 0.1)
       ..style = PaintingStyle.fill;
 
+    const sides = 6;
+    final degToRad = math.pi / 180;
     final bgPoints = <Offset>[];
-    for (int i = 0; i < 6; i++) {
-      final angle = (i * 60 - 90) * math.pi / 180; // 0번이 12시 방향
+    for (int i = 0; i < sides; i++) {
+      final angle = (i * 60 - 90) * degToRad; // 0번이 12시 방향
       final x = centerX + maxRadius * math.cos(angle);
       final y = centerY + maxRadius * math.sin(angle);
       bgPoints.add(Offset(x, y));
@@ -223,7 +235,7 @@ class _HexagonPainter extends CustomPainter {
 
     final bgPath = Path()
       ..moveTo(bgPoints[0].dx, bgPoints[0].dy);
-    for (int i = 1; i < 6; i++) {
+    for (int i = 1; i < sides; i++) {
       bgPath.lineTo(bgPoints[i].dx, bgPoints[i].dy);
     }
     bgPath.close();
@@ -238,10 +250,10 @@ class _HexagonPainter extends CustomPainter {
 
     // 실제 점수 데이터 육각형 그리기
     final dataPoints = <Offset>[];
-    for (int i = 0; i < 6; i++) {
-      final angle = (i * 60 - 90) * math.pi / 180;
+    for (int i = 0; i < sides; i++) {
+      final angle = (i * 60 - 90) * degToRad;
       // 점수 정규화 (0-25 → 0-1)
-      final normalized = (scores[i] / 25).clamp(0.0, 1.0);
+      final normalized = ((i < scores.length ? scores[i] : 0) / 25).clamp(0.0, 1.0);
       final radius = maxRadius * normalized;
       final x = centerX + radius * math.cos(angle);
       final y = centerY + radius * math.sin(angle);
@@ -250,7 +262,7 @@ class _HexagonPainter extends CustomPainter {
 
     final dataPath = Path()
       ..moveTo(dataPoints[0].dx, dataPoints[0].dy);
-    for (int i = 1; i < 6; i++) {
+    for (int i = 1; i < sides; i++) {
       dataPath.lineTo(dataPoints[i].dx, dataPoints[i].dy);
     }
     dataPath.close();
