@@ -52,7 +52,7 @@ class OnboardingIdealPersonalityScreen extends StatelessWidget {
       subtitle: "'이렇게 행동하는 사람이 되고 싶다' 하는 걸 골라주세요.\n이상향을 설정할게요.",
       accentColor: const Color(0xFFEEC22A),
       cardBgColor: const Color(0xFFFEF6DA),
-      questions: kPersonalityQuestions,
+      questions: kIdealQuestions,
       onComplete: (scores) => Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => OnboardingPersonalityResultScreen(
