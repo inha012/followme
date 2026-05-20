@@ -77,7 +77,7 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PersonalityTestScreen(
         title: '이상향 검사',
-        subtitle: "'이렇게 행동하는 사람이 되고 싶다' 하는 걸 골라주세요.",
+        subtitle: "추구하는 모습을 선택해주세요.",
         accentColor: const Color(0xFFEEC22A),
         cardBgColor: const Color(0xFFFEF6DA),
         questions: kIdealQuestions,
