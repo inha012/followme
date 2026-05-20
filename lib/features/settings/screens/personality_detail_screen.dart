@@ -1,18 +1,31 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:follow_me/core/utils/personality_type_utils.dart';
 import 'package:follow_me/features/settings/screens/personality_all_screen.dart';
 import 'package:follow_me/shared/widgets/floating_tab_bar.dart';
 
 class PersonalityDetailScreen extends StatelessWidget {
-  const PersonalityDetailScreen({super.key, required this.isIdeal});
+  const PersonalityDetailScreen({
+    super.key,
+    required this.isIdeal,
+    required this.scores,
+    this.gender,
+  });
 
   final bool isIdeal;
+  final List<int> scores;
+  final String? gender;
 
   @override
   Widget build(BuildContext context) {
     final color =
         isIdeal ? const Color(0xFFEEC22A) : const Color(0xFF208484);
     final title = isIdeal ? '현재 이상향' : '현재 내 성향';
+    final personality = classifyPersonality(scores, gender: gender);
+    final typeName = scores.isEmpty ? 'OO 성향' : personality.name;
+    final description = scores.isEmpty
+        ? '성향 분석을 완료하면 그래프가 업데이트돼요.'
+        : personality.description;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -84,10 +97,10 @@ class PersonalityDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 성향 이름 (나중에 채워질 자리)
-                    const Text(
-                      'OO 성향',
-                      style: TextStyle(
+                    // 성향 이름
+                    Text(
+                      typeName,
+                      style: const TextStyle(
                         fontFamily: 'Pretendard',
                         fontWeight: FontWeight.w700,
                         fontSize: 22,
@@ -95,10 +108,12 @@ class PersonalityDetailScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    // 성향 설명 (나중에 채워질 자리)
-                    const Text(
-                      '',
-                      style: TextStyle(
+                    // 성향 설명
+                    Text(
+                      scores.isEmpty
+                          ? '성향 분석을 완료하면 그래프가 업데이트돼요.'
+                          : description,
+                      style: const TextStyle(
                         fontFamily: 'Pretendard',
                         fontWeight: FontWeight.w400,
                         fontSize: 13,
@@ -112,7 +127,10 @@ class PersonalityDetailScreen extends StatelessWidget {
                         width: 200,
                         height: 185,
                         child: CustomPaint(
-                          painter: _HexagonPainter(color),
+                          painter: _HexagonPainter(
+                            color: color,
+                            scores: scores,
+                          ),
                         ),
                       ),
                     ),
@@ -160,35 +178,81 @@ class PersonalityDetailScreen extends StatelessWidget {
 }
 
 class _HexagonPainter extends CustomPainter {
-  const _HexagonPainter(this.color);
+  const _HexagonPainter({
+    required this.color,
+    required this.scores,
+  });
 
   final Color color;
+  final List<int> scores;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
+    final centerX = size.width / 2;
+    final centerY = size.height / 2;
+    final maxRadius = size.width / 2.5;
+
+    final bgPaint = Paint()
+      ..color = color.withValues(alpha: 0.1)
       ..style = PaintingStyle.fill;
 
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = math.min(cx, cy);
-    final path = Path();
-
-    for (int i = 0; i < 6; i++) {
-      final angle = math.pi / 3 * i - math.pi / 6;
-      final x = cx + r * math.cos(angle);
-      final y = cy + r * math.sin(angle);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
+    const sides = 6;
+    final degToRad = math.pi / 180;
+    final bgPoints = <Offset>[];
+    for (int i = 0; i < sides; i++) {
+      final angle = (i * 60 - 90) * degToRad;
+      final x = centerX + maxRadius * math.cos(angle);
+      final y = centerY + maxRadius * math.sin(angle);
+      bgPoints.add(Offset(x, y));
     }
-    path.close();
-    canvas.drawPath(path, paint);
+
+    final bgPath = Path()..moveTo(bgPoints[0].dx, bgPoints[0].dy);
+    for (int i = 1; i < sides; i++) {
+      bgPath.lineTo(bgPoints[i].dx, bgPoints[i].dy);
+    }
+    bgPath.close();
+    canvas.drawPath(bgPath, bgPaint);
+
+    final borderPaint = Paint()
+      ..color = color.withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    canvas.drawPath(bgPath, borderPaint);
+
+    final dataPoints = <Offset>[];
+    for (int i = 0; i < sides; i++) {
+      final angle = (i * 60 - 90) * degToRad;
+      final normalized = ((i < scores.length ? scores[i] : 0) / 25).clamp(0.0, 1.0);
+      final radius = maxRadius * normalized;
+      final x = centerX + radius * math.cos(angle);
+      final y = centerY + radius * math.sin(angle);
+      dataPoints.add(Offset(x, y));
+    }
+
+    final dataPath = Path()..moveTo(dataPoints[0].dx, dataPoints[0].dy);
+    for (int i = 1; i < sides; i++) {
+      dataPath.lineTo(dataPoints[i].dx, dataPoints[i].dy);
+    }
+    dataPath.close();
+
+    final fillPaint = Paint()
+      ..color = color.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(dataPath, fillPaint);
+
+    final linePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawPath(dataPath, linePaint);
+
+    final centerPointPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(centerX, centerY), 4, centerPointPaint);
   }
 
   @override
-  bool shouldRepaint(_HexagonPainter old) => old.color != color;
+  bool shouldRepaint(_HexagonPainter old) =>
+      old.color != color || old.scores != scores;
 }

@@ -75,8 +75,10 @@ class PersonalityAllScreen extends StatelessWidget {
                   itemBuilder: (ctx, index) => GestureDetector(
                     onTap: () => Navigator.of(ctx).push(
                       MaterialPageRoute(
-                        builder: (_) =>
-                            const PersonalityDetailScreen(isIdeal: false),
+                        builder: (_) => const PersonalityDetailScreen(
+                          isIdeal: false,
+                          scores: [],
+                        ),
                       ),
                     ),
                     child: _PersonalityGridCard(color: _teal),

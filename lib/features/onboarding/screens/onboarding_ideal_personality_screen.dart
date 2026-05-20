@@ -49,10 +49,10 @@ class OnboardingIdealPersonalityScreen extends StatelessWidget {
     final givenName = userName.length > 1 ? userName.substring(1) : userName;
     return PersonalityTestScreen(
       title: '$givenName님이 추구하는 모습을 알려주세요',
-      subtitle: "'이렇게 행동하는 사람이 되고 싶다' 하는 걸 골라주세요.\n이상향을 설정할게요.",
+      subtitle: "이상향을 설정할게요.",
       accentColor: const Color(0xFFEEC22A),
       cardBgColor: const Color(0xFFFEF6DA),
-      questions: kPersonalityQuestions,
+      questions: kIdealQuestions,
       onComplete: (scores) => Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => OnboardingPersonalityResultScreen(

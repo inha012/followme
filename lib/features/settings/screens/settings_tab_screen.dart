@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:follow_me/core/services/user_data_service.dart';
+import 'package:follow_me/core/utils/personality_type_utils.dart';
 import 'package:follow_me/features/onboarding/screens/personality_questions.dart';
 import 'package:follow_me/features/onboarding/screens/personality_test_screen.dart';
 import 'package:follow_me/features/settings/screens/personality_detail_screen.dart';
@@ -16,6 +17,7 @@ class SettingsTabScreen extends StatefulWidget {
 class _SettingsTabScreenState extends State<SettingsTabScreen> {
   int _totalMissions = 0;
   String _userName = '';
+  String? _gender;
   List<int> _myScores = [];
   List<int> _idealScores = [];
   bool _isLoading = true;
@@ -30,6 +32,7 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
     final results = await Future.wait([
       UserDataService.getTotalMissionsDone(),
       UserDataService.getName(),
+      UserDataService.getGender(),
       UserDataService.getMyScores(),
       UserDataService.getIdealScores(),
     ]);
@@ -37,8 +40,9 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
       setState(() {
         _totalMissions = results[0] as int;
         _userName = (results[1] as String?) ?? '';
-        _myScores = results[2] as List<int>;
-        _idealScores = results[3] as List<int>;
+        _gender = results[2] as String?;
+        _myScores = results[3] as List<int>;
+        _idealScores = results[4] as List<int>;
         _isLoading = false;
       });
     }
@@ -58,6 +62,7 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
             builder: (_) => SettingsPersonalityResultScreen(
               isIdeal: false,
               scores: scores,
+              gender: _gender,
               onDone: () {
                 setState(() => _myScores = scores);
               },
@@ -72,16 +77,17 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PersonalityTestScreen(
         title: '이상향 검사',
-        subtitle: "'이렇게 행동하는 사람이 되고 싶다' 하는 걸 골라주세요.",
+        subtitle: "추구하는 모습을 선택해주세요.",
         accentColor: const Color(0xFFEEC22A),
         cardBgColor: const Color(0xFFFEF6DA),
-        questions: kPersonalityQuestions,
+        questions: kIdealQuestions,
         showExitConfirm: true,
         onComplete: (scores) {
           Navigator.of(context).pushReplacement(MaterialPageRoute(
             builder: (_) => SettingsPersonalityResultScreen(
               isIdeal: true,
               scores: scores,
+              gender: _gender,
               onDone: () {
                 setState(() => _idealScores = scores);
               },
@@ -234,9 +240,11 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                                       GestureDetector(
                                         onTap: () => Navigator.of(context).push(
                                           MaterialPageRoute(
-                                            builder: (_) =>
-                                                const PersonalityDetailScreen(
-                                                    isIdeal: false),
+                                            builder: (_) => PersonalityDetailScreen(
+                                              isIdeal: false,
+                                              scores: _myScores,
+                                              gender: _gender,
+                                            ),
                                           ),
                                         ),
                                         child: Container(
@@ -252,7 +260,10 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                                             child: Text(
                                               _myScores.isEmpty
                                                   ? '-'
-                                                  : '옹호자 성향',
+                                                  : classifyPersonality(
+                                                      _myScores,
+                                                      gender: _gender,
+                                                    ).name,
                                               style: const TextStyle(
                                                 fontFamily: 'Pretendard',
                                                 fontWeight: FontWeight.w600,
@@ -283,9 +294,11 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                                       GestureDetector(
                                         onTap: () => Navigator.of(context).push(
                                           MaterialPageRoute(
-                                            builder: (_) =>
-                                                const PersonalityDetailScreen(
-                                                    isIdeal: true),
+                                            builder: (_) => PersonalityDetailScreen(
+                                              isIdeal: true,
+                                              scores: _idealScores,
+                                              gender: _gender,
+                                            ),
                                           ),
                                         ),
                                         child: Container(
@@ -301,7 +314,10 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                                             child: Text(
                                               _idealScores.isEmpty
                                                   ? '-'
-                                                  : '수호자 성향',
+                                                  : classifyPersonality(
+                                                      _idealScores,
+                                                      gender: _gender,
+                                                    ).name,
                                               style: const TextStyle(
                                                 fontFamily: 'Pretendard',
                                                 fontWeight: FontWeight.w600,
