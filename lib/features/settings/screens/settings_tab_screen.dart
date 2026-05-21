@@ -20,7 +20,10 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
   String? _gender;
   List<int> _myScores = [];
   List<int> _idealScores = [];
+  Map<int, double> _todayGains = {};
   bool _isLoading = true;
+
+  static const _traitLabels = ['모험적', '사색적', '외향적', '주도적', '다정함', '논리적'];
 
   @override
   void initState() {
@@ -35,14 +38,16 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
       UserDataService.getGender(),
       UserDataService.getMyScores(),
       UserDataService.getIdealScores(),
+      UserDataService.getTodayScoreGains(),
     ]);
     if (mounted) {
       setState(() {
         _totalMissions = results[0] as int;
         _userName = (results[1] as String?) ?? '';
         _gender = results[2] as String?;
-        _myScores = results[3] as List<int>;
+        _myScores = (results[3] as List<double>).map((e) => e.round()).toList();
         _idealScores = results[4] as List<int>;
+        _todayGains = results[5] as Map<int, double>;
         _isLoading = false;
       });
     }
@@ -220,6 +225,40 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                                 ),
                               ),
                             ),
+                            if (_todayGains.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    for (final entry in _todayGains.entries)
+                                      if (entry.value > 0 &&
+                                          entry.key < _traitLabels.length)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEEC22A)
+                                                .withValues(alpha: 0.15),
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            '+${entry.value % 1 == 0 ? entry.value.toInt() : entry.value.toStringAsFixed(2)} ${_traitLabels[entry.key]}',
+                                            style: const TextStyle(
+                                              fontFamily: 'Pretendard',
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 11,
+                                              color: Color(0xFFB8920E),
+                                            ),
+                                          ),
+                                        ),
+                                  ],
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 20),
                             // 두 성향 알약
                             Row(

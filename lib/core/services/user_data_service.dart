@@ -55,11 +55,49 @@ class UserDataService {
     return prefs.getString(_keyGender);
   }
 
-  static Future<List<int>> getMyScores() async {
+  static Future<List<double>> getMyScores() async {
     final prefs = await SharedPreferences.getInstance();
     final s = prefs.getString(_keyMyScores);
     if (s == null) return [];
-    return (jsonDecode(s) as List).cast<int>();
+    return (jsonDecode(s) as List).map((e) => (e as num).toDouble()).toList();
+  }
+
+  static Future<void> updateMyScoreForTrait(int traitIndex, double delta) async {
+    final scores = await getMyScores();
+    if (traitIndex < 0 || traitIndex >= scores.length) return;
+    scores[traitIndex] = (scores[traitIndex] + delta).clamp(0.0, 25.0);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyMyScores, jsonEncode(scores));
+    await _updateTodayGains(traitIndex, delta, prefs);
+  }
+
+  static String _todayGainsKey() {
+    final now = DateTime.now();
+    final d = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return 'today_score_gains_$d';
+  }
+
+  static Future<void> _updateTodayGains(int traitIndex, double delta, SharedPreferences prefs) async {
+    final key = _todayGainsKey();
+    final raw = prefs.getString(key);
+    final Map<String, dynamic> gains = raw != null ? jsonDecode(raw) as Map<String, dynamic> : {};
+    final current = (gains['$traitIndex'] as num?)?.toDouble() ?? 0.0;
+    gains['$traitIndex'] = (current + delta).clamp(0.0, 25.0);
+    await prefs.setString(key, jsonEncode(gains));
+  }
+
+  static Future<void> clearTodayGains() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_todayGainsKey());
+  }
+
+  // traitIndex → 오늘 누적 증가량 (0이면 미포함)
+  static Future<Map<int, double>> getTodayScoreGains() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_todayGainsKey());
+    if (raw == null) return {};
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    return decoded.map((k, v) => MapEntry(int.parse(k), (v as num).toDouble()));
   }
 
   static Future<List<int>> getIdealScores() async {
@@ -79,12 +117,12 @@ class UserDataService {
         .toList();
   }
 
-  static Future<void> saveMyScores(List<int> scores) async {
+  static Future<void> saveMyScores(List<num> scores) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyMyScores, jsonEncode(scores));
   }
 
-  static Future<void> saveIdealScores(List<int> scores) async {
+  static Future<void> saveIdealScores(List<num> scores) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyIdealScores, jsonEncode(scores));
   }

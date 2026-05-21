@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:follow_me/core/services/prediction_api_service.dart';
 import 'package:follow_me/core/services/user_data_service.dart';
+import 'package:follow_me/features/daily_prediction/models/prediction_result.dart';
 import 'package:follow_me/features/daily_prediction/services/prediction_service.dart';
 import 'package:follow_me/features/diary/screens/diary_write_screen.dart';
 import 'package:follow_me/features/schedule_input/screens/schedule_tab_screen.dart';
@@ -23,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static final _tooltipGroupId = Object();
 
   String? _fortune;
-  List<String> _missions = [];
+  List<Mission> _missions = [];
   bool _isLoading = false;
   bool _isGenerating = false;
 
@@ -54,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _isGenerating = true;
       _missionChecked = [false, false, false, false];
     });
+    await UserDataService.clearTodayGains();
     await PredictionService.generateAndSave();
     await _loadPrediction();
     if (!mounted) return;
@@ -284,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final missions = _missions.isNotEmpty
         ? _missions
-        : ['미션을 불러올 수 없습니다.'];
+        : [const Mission(text: '미션을 불러올 수 없습니다.', trait: 0)];
 
     return Container(
       width: double.infinity,
@@ -330,6 +332,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         setState(() => _missionChecked[i] = newChecked);
                         await UserDataService.incrementMissionsDone(
                             newChecked ? 1 : -1);
+                        await UserDataService.updateMyScoreForTrait(
+                            missions[i].trait, newChecked ? 0.25 : -0.25);
                       }
                     },
                     child: Container(
@@ -359,15 +363,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      missions[i],
-                      style: const TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                        height: 24 / 14,
-                        color: Color(0xFF262626),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          missions[i].text,
+                          style: const TextStyle(
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            height: 24 / 14,
+                            color: Color(0xFF262626),
+                          ),
+                        ),
+                        if (missions[i].traitLabel.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(top: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF208484).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              missions[i].traitLabel,
+                              style: const TextStyle(
+                                fontFamily: 'Pretendard',
+                                fontWeight: FontWeight.w500,
+                                fontSize: 11,
+                                color: Color(0xFF208484),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ],

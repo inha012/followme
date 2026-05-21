@@ -2,7 +2,7 @@ class AppConstants {
   // ── FastAPI 서버 URL ───────────────────────────────────────────────────────
   // 개발(Mac): 'http://192.168.0.151:8000'
   // EC2 배포 후: 'http://<EC2_PUBLIC_IP>:8000'
-  static const serverBaseUrl = 'http://3.83.157.176:8000'; // 서버 재시작했다면 public IP 바꿔주어야 함.
+  static const serverBaseUrl = 'http://3.85.9.45:8000'; // 서버 재시작했다면 public IP 바꿔주어야 함.
 
   // ── Ollama 직접 연결 (레거시 / 로컬 테스트용) ──────────────────────────────
   static const ollamaBaseUrl = 'http://192.168.0.151:11434';

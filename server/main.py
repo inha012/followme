@@ -100,8 +100,8 @@ class PredictRequest(BaseModel):
     user_id: Optional[str] = None
     birthdate: Optional[str] = None
     gender: Optional[str] = None
-    my_scores: Optional[List[int]] = []
-    ideal_scores: Optional[List[int]] = []
+    my_scores: Optional[List[float]] = []
+    ideal_scores: Optional[List[float]] = []
     schedule: Optional[List[ScheduleEntry]] = []
     diary: Optional[str] = None
 
@@ -110,9 +110,13 @@ class DiaryRequest(BaseModel):
     text: str
     date: str
 
+class MissionItem(BaseModel):
+    text: str
+    trait: int  # 0:모험적 1:사색적 2:외향적 3:주도적 4:다정함 5:논리적
+
 class PredictResponse(BaseModel):
     fortune: str
-    missions: List[str]
+    missions: List[MissionItem]
 
 # ── 날씨 조회 ──────────────────────────────────────────────────────────────────
 async def get_tomorrow_weather() -> str:
@@ -183,8 +187,10 @@ def build_prompt(req: PredictRequest, weather: str, past_diaries: list[str] | No
 주간 고정 일정:
 {schedule_str}{diary_section}{past_section}
 
+성향 인덱스: 0=모험적, 1=사색적, 2=외향적, 3=주도적, 4=다정함, 5=논리적
+
 반드시 아래 JSON 형식만 출력하세요 (다른 설명 없이):
-{{"fortune":"운세를 2~3문장으로 작성","missions":["미션1","미션2","미션3","미션4"]}}"""
+{{"fortune":"운세를 2~3문장으로 작성","missions":[{{"text":"미션1","trait":0}},{{"text":"미션2","trait":3}},{{"text":"미션3","trait":4}},{{"text":"미션4","trait":5}}]}}"""
 
 # ── JSON 파싱 공통 ─────────────────────────────────────────────────────────────
 def parse_llm_response(raw: str) -> dict:
@@ -195,12 +201,23 @@ def parse_llm_response(raw: str) -> dict:
             fortune  = data.get("fortune", "")
             missions = data.get("missions", [])
             if fortune and len(missions) == 4:
-                return {"fortune": fortune, "missions": missions}
+                normalized = []
+                for m in missions:
+                    if isinstance(m, dict):
+                        normalized.append({"text": m.get("text", ""), "trait": int(m.get("trait", 0))})
+                    else:
+                        normalized.append({"text": str(m), "trait": 0})
+                return {"fortune": fortune, "missions": normalized}
         except json.JSONDecodeError:
             pass
     return {
         "fortune": "오늘도 차분하게 하루를 시작해보세요. 작은 것에 집중하다 보면 큰 흐름이 만들어집니다.",
-        "missions": ["물 8잔 마시기", "10분 산책하기", "감사한 일 3가지 적기", "일찍 자기"],
+        "missions": [
+            {"text": "물 8잔 마시기", "trait": 4},
+            {"text": "10분 산책하기", "trait": 0},
+            {"text": "감사한 일 3가지 적기", "trait": 1},
+            {"text": "일찍 자기", "trait": 3},
+        ],
     }
 
 # ── Ollama 호출 ────────────────────────────────────────────────────────────────
