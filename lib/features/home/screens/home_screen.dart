@@ -27,15 +27,54 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Mission> _missions = [];
   bool _isLoading = false;
   bool _isGenerating = false;
+  bool _showUpdateNotice = false;
 
   @override
   void initState() {
     super.initState();
-    _loadPrediction();
+    WidgetsBinding.instance.addObserver(this);
+    _autoUpdateIfNeeded();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _autoUpdateIfNeeded();
+    }
+  }
+
+  // 날짜가 바뀌었으면 자동으로 새 예측을 생성하고, 이미 오늘 것이면 캐시를 그대로 표시
+  Future<void> _autoUpdateIfNeeded() async {
+    final stored = await PredictionService.getToday();
+    final isUpToDate =
+        stored != null && stored.date == PredictionResult.todayKey();
+
+    if (!isUpToDate) {
+      // 날짜가 바뀐 경우 — 새 예측 생성
+      if (mounted) {
+        setState(() {
+          _isGenerating = true;
+          _missionChecked = [false, false, false, false];
+        });
+      }
+      if (stored != null) {
+        await UserDataService.clearTodayGains();
+      }
+      await PredictionService.generateAndSave();
+      if (mounted) setState(() => _isGenerating = false);
+    }
+
+    await _loadPrediction();
   }
 
   Future<void> _loadPrediction() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     final result = await PredictionService.getToday();
     if (mounted) {
       setState(() {
@@ -49,8 +88,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  // 새로고침: 오늘 데이터가 이미 있으면 토스트, 날짜가 바뀌었으면 새 예측 생성
   Future<void> _refresh() async {
     if (_isGenerating) return;
+
+    final stored = await PredictionService.getToday();
+    final isUpToDate =
+        stored != null && stored.date == PredictionResult.todayKey();
+
+    if (isUpToDate) {
+      _showUpdateToast();
+      return;
+    }
+
     setState(() {
       _isGenerating = true;
       _missionChecked = [false, false, false, false];
@@ -72,6 +122,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       );
     }
+  }
+
+  void _showUpdateToast() {
+    setState(() => _showUpdateNotice = true);
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) setState(() => _showUpdateNotice = false);
+    });
   }
 
   bool get _allDone =>
@@ -111,25 +168,59 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ),
       ),
-      body: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 33),
-              _buildLogo(),
-              const SizedBox(height: 24),
-              _buildMissionSection(),
-              const SizedBox(height: 30),
-              _buildFortuneSection(),
-              const SizedBox(height: 30),
-              Center(child: _buildDiaryButton()),
-              const SizedBox(height: 20),
-            ],
+      body: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 33),
+                  _buildLogo(),
+                  const SizedBox(height: 24),
+                  _buildMissionSection(),
+                  const SizedBox(height: 30),
+                  _buildFortuneSection(),
+                  const SizedBox(height: 30),
+                  Center(child: _buildDiaryButton()),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
           ),
-        ),
+          Positioned(
+            bottom: 110,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  opacity: _showUpdateNotice ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF262626).withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      '업데이트 되었습니다.',
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
