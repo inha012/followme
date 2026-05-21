@@ -330,10 +330,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       if (i < _missionChecked.length) {
                         final newChecked = !checked;
                         setState(() => _missionChecked[i] = newChecked);
-                        await UserDataService.incrementMissionsDone(
-                            newChecked ? 1 : -1);
-                        await UserDataService.updateMyScoreForTrait(
-                            missions[i].trait, newChecked ? 0.25 : -0.25);
+                        final d = newChecked ? 1 : -1;
+                        await Future.wait([
+                          UserDataService.incrementMissionsDone(d),
+                          UserDataService.updateMyScoreForTrait(
+                              missions[i].trait, d * 0.25),
+                          UserDataService.updateDailyMissionCount(d),
+                        ]);
                       }
                     },
                     child: Container(

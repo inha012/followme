@@ -12,6 +12,7 @@ class UserDataService {
   static const _keyIdealScores = 'ideal_personality_scores';
   static const _keyTimetable = 'timetable_entries';
   static const _keyTotalMissionsDone = 'total_missions_done';
+  static const _keyMissionHistory = 'mission_history';
 
   static Future<void> saveProfile({
     required String name,
@@ -156,5 +157,30 @@ class UserDataService {
     final prefs = await SharedPreferences.getInstance();
     final current = prefs.getInt(_keyTotalMissionsDone) ?? 0;
     await prefs.setInt(_keyTotalMissionsDone, (current + delta).clamp(0, 1000000));
+  }
+
+  static String _todayDateStr() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  // 날짜(YYYY-MM-DD) → 해당 날 완료한 미션 수 (0~4)
+  static Future<Map<String, int>> getMissionHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final s = prefs.getString(_keyMissionHistory);
+    if (s == null) return {};
+    final decoded = jsonDecode(s) as Map<String, dynamic>;
+    return decoded.map((k, v) => MapEntry(k, (v as num).toInt()));
+  }
+
+  static Future<void> updateDailyMissionCount(int delta) async {
+    final prefs = await SharedPreferences.getInstance();
+    final s = prefs.getString(_keyMissionHistory);
+    final Map<String, dynamic> history =
+        s != null ? jsonDecode(s) as Map<String, dynamic> : {};
+    final today = _todayDateStr();
+    final current = (history[today] as num?)?.toInt() ?? 0;
+    history[today] = (current + delta).clamp(0, 4);
+    await prefs.setString(_keyMissionHistory, jsonEncode(history));
   }
 }

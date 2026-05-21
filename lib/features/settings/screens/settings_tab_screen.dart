@@ -6,6 +6,7 @@ import 'package:follow_me/features/onboarding/screens/personality_test_screen.da
 import 'package:follow_me/features/settings/screens/personality_detail_screen.dart';
 import 'package:follow_me/features/settings/screens/settings_personality_result_screen.dart';
 import 'package:follow_me/shared/widgets/floating_tab_bar.dart';
+import 'package:follow_me/shared/widgets/mission_heatmap.dart';
 import 'package:follow_me/shared/widgets/personality_radar_chart.dart';
 
 class SettingsTabScreen extends StatefulWidget {
@@ -21,6 +22,8 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
   List<int> _myScores = [];
   List<int> _idealScores = [];
   Map<int, double> _todayGains = {};
+  Map<String, int> _missionHistory = {};
+  int _selectedYear = DateTime.now().year;
   bool _isLoading = true;
 
   @override
@@ -36,6 +39,7 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
       UserDataService.getMyScores(),
       UserDataService.getIdealScores(),
       UserDataService.getTodayScoreGains(),
+      UserDataService.getMissionHistory(),
     ]);
     if (mounted) {
       setState(() {
@@ -44,6 +48,7 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
         _myScores = (results[2] as List<double>).map((e) => e.round()).toList();
         _idealScores = results[3] as List<int>;
         _todayGains = results[4] as Map<int, double>;
+        _missionHistory = results[5] as Map<String, int>;
         _isLoading = false;
       });
     }
@@ -369,6 +374,87 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                             _SmallRetakeButton(
                               label: '이상향 설정\n다시 하기',
                               onTap: _retakeIdealPersonality,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // ── 활동 기록 히트맵 ────────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x18000000),
+                              blurRadius: 24,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  '활동 기록',
+                                  style: TextStyle(
+                                    fontFamily: 'Pretendard',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: Color(0xFF262626),
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => setState(
+                                          () => _selectedYear--),
+                                      child: const Icon(
+                                        Icons.chevron_left,
+                                        size: 18,
+                                        color: Color(0xFF6F6F6F),
+                                      ),
+                                    ),
+                                    Text(
+                                      '$_selectedYear',
+                                      style: const TextStyle(
+                                        fontFamily: 'Pretendard',
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13,
+                                        color: Color(0xFF444444),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: _selectedYear <
+                                              DateTime.now().year
+                                          ? () => setState(
+                                              () => _selectedYear++)
+                                          : null,
+                                      child: Icon(
+                                        Icons.chevron_right,
+                                        size: 18,
+                                        color: _selectedYear <
+                                                DateTime.now().year
+                                            ? const Color(0xFF6F6F6F)
+                                            : const Color(0xFFCCCCCC),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            MissionHeatmap(
+                              history: _missionHistory,
+                              year: _selectedYear,
                             ),
                           ],
                         ),
