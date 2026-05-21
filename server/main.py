@@ -151,11 +151,33 @@ async def get_tomorrow_weather() -> str:
         return "날씨 정보를 가져올 수 없습니다."
 
 # ── 프롬프트 조립 ──────────────────────────────────────────────────────────────
+TRAIT_NAMES = ['모험적', '사색적', '외향적', '주도적', '다정함', '논리적']
+
 def build_prompt(req: PredictRequest, weather: str, past_diaries: list[str] | None = None) -> str:
     birthdate_str = req.birthdate or "정보 없음"
     gender_str = "남성" if req.gender == "M" else ("여성" if req.gender == "F" else "정보 없음")
-    my_avg    = f"{sum(req.my_scores)/len(req.my_scores):.1f}"    if req.my_scores    else "-"
-    ideal_avg = f"{sum(req.ideal_scores)/len(req.ideal_scores):.1f}" if req.ideal_scores else "-"
+
+    # 성향별 점수 나열
+    if req.my_scores and len(req.my_scores) == 6:
+        my_scores_str = ", ".join(f"{TRAIT_NAMES[i]}:{v:.1f}" for i, v in enumerate(req.my_scores))
+    else:
+        my_scores_str = "정보 없음"
+
+    if req.ideal_scores and len(req.ideal_scores) == 6:
+        ideal_scores_str = ", ".join(f"{TRAIT_NAMES[i]}:{v:.1f}" for i, v in enumerate(req.ideal_scores))
+    else:
+        ideal_scores_str = "정보 없음"
+
+    # 이상향 대비 부족한 성향 (우선순위 순)
+    gap_section = ""
+    if req.my_scores and req.ideal_scores and len(req.my_scores) == 6 and len(req.ideal_scores) == 6:
+        deficits = sorted(
+            [(i, req.ideal_scores[i] - req.my_scores[i]) for i in range(6) if req.ideal_scores[i] - req.my_scores[i] > 0],
+            key=lambda x: -x[1]
+        )
+        if deficits:
+            deficit_str = ", ".join(f"{TRAIT_NAMES[i]}(+{g:.1f})" for i, g in deficits)
+            gap_section = f"\n\n이상향 대비 부족한 성향 (우선순위 순): {deficit_str}\n→ 4개 미션 중 부족한 성향 위주로 trait을 배정하세요."
 
     if req.schedule:
         schedule_str = "\n".join(
@@ -179,8 +201,8 @@ def build_prompt(req: PredictRequest, weather: str, past_diaries: list[str] | No
 사용자 정보:
 - 생년월일: {birthdate_str}
 - 성별: {gender_str}
-- 현재 성향 점수 평균 (1-5점): {my_avg}
-- 이상향 성향 점수 평균 (1-5점): {ideal_avg}
+- 현재 성향 점수 (0-25): {my_scores_str}
+- 이상향 성향 점수 (0-25): {ideal_scores_str}{gap_section}
 
 내일 날씨: {weather}
 

@@ -6,6 +6,7 @@ import 'package:follow_me/features/onboarding/screens/personality_test_screen.da
 import 'package:follow_me/features/settings/screens/personality_detail_screen.dart';
 import 'package:follow_me/features/settings/screens/settings_personality_result_screen.dart';
 import 'package:follow_me/shared/widgets/floating_tab_bar.dart';
+import 'package:follow_me/shared/widgets/personality_radar_chart.dart';
 
 class SettingsTabScreen extends StatefulWidget {
   const SettingsTabScreen({super.key});
@@ -15,15 +16,12 @@ class SettingsTabScreen extends StatefulWidget {
 }
 
 class _SettingsTabScreenState extends State<SettingsTabScreen> {
-  int _totalMissions = 0;
   String _userName = '';
   String? _gender;
   List<int> _myScores = [];
   List<int> _idealScores = [];
   Map<int, double> _todayGains = {};
   bool _isLoading = true;
-
-  static const _traitLabels = ['모험적', '사색적', '외향적', '주도적', '다정함', '논리적'];
 
   @override
   void initState() {
@@ -33,7 +31,6 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
 
   Future<void> _load() async {
     final results = await Future.wait([
-      UserDataService.getTotalMissionsDone(),
       UserDataService.getName(),
       UserDataService.getGender(),
       UserDataService.getMyScores(),
@@ -42,12 +39,11 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
     ]);
     if (mounted) {
       setState(() {
-        _totalMissions = results[0] as int;
-        _userName = (results[1] as String?) ?? '';
-        _gender = results[2] as String?;
-        _myScores = (results[3] as List<double>).map((e) => e.round()).toList();
-        _idealScores = results[4] as List<int>;
-        _todayGains = results[5] as Map<int, double>;
+        _userName = (results[0] as String?) ?? '';
+        _gender = results[1] as String?;
+        _myScores = (results[2] as List<double>).map((e) => e.round()).toList();
+        _idealScores = results[3] as List<int>;
+        _todayGains = results[4] as Map<int, double>;
         _isLoading = false;
       });
     }
@@ -105,9 +101,6 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final clamped = _totalMissions.clamp(0, 100);
-    final progress = clamped / 100.0;
-
     return Scaffold(
       backgroundColor: Colors.white,
       extendBody: true,
@@ -193,73 +186,56 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                                 color: Color(0xFF262626),
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            // 이상향 접근률 레이블
-                            const Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                '이상향 접근률',
-                                style: TextStyle(
-                                  fontFamily: 'Pretendard',
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 13,
-                                  color: Color(0xFF6F6F6F),
-                                ),
-                              ),
+                            const SizedBox(height: 16),
+                            // 육각형 레이더 차트
+                            PersonalityRadarChart(
+                              myScores: _myScores,
+                              idealScores: _idealScores,
+                              todayGains: _todayGains,
                             ),
-                            const SizedBox(height: 8),
-                            // 진행바 (황색)
-                            TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 0, end: progress),
-                              duration: const Duration(milliseconds: 600),
-                              curve: Curves.easeOut,
-                              builder: (_, value, _) => ClipRRect(
-                                borderRadius: BorderRadius.circular(100),
-                                child: LinearProgressIndicator(
-                                  value: value,
-                                  minHeight: 8,
-                                  backgroundColor: const Color(0xFFE0E0E0),
-                                  valueColor: const AlwaysStoppedAnimation(
-                                    Color(0xFFEEC22A),
+                            const SizedBox(height: 10),
+                            // 범례
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFF208484),
                                   ),
                                 ),
-                              ),
-                            ),
-                            if (_todayGains.isNotEmpty) ...[
-                              const SizedBox(height: 10),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: [
-                                    for (final entry in _todayGains.entries)
-                                      if (entry.value > 0 &&
-                                          entry.key < _traitLabels.length)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFEEC22A)
-                                                .withValues(alpha: 0.15),
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                          ),
-                                          child: Text(
-                                            '+${entry.value % 1 == 0 ? entry.value.toInt() : entry.value.toStringAsFixed(2)} ${_traitLabels[entry.key]}',
-                                            style: const TextStyle(
-                                              fontFamily: 'Pretendard',
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 11,
-                                              color: Color(0xFFB8920E),
-                                            ),
-                                          ),
-                                        ),
-                                  ],
+                                const SizedBox(width: 4),
+                                const Text(
+                                  '지금 성향',
+                                  style: TextStyle(
+                                    fontFamily: 'Pretendard',
+                                    fontSize: 11,
+                                    color: Color(0xFF6F6F6F),
+                                  ),
                                 ),
-                              ),
-                            ],
-                            const SizedBox(height: 20),
+                                const SizedBox(width: 16),
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFFEEC22A),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  '이상향',
+                                  style: TextStyle(
+                                    fontFamily: 'Pretendard',
+                                    fontSize: 11,
+                                    color: Color(0xFF6F6F6F),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
                             // 두 성향 알약
                             Row(
                               children: [
