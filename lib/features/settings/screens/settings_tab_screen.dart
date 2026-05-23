@@ -382,7 +382,7 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 const Text(
-                                  '활동 기록',
+                                  '미션 기록',
                                   style: TextStyle(
                                     fontFamily: 'Pretendard',
                                     fontWeight: FontWeight.w600,
