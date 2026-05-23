@@ -357,28 +357,6 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    // ── 재검사 버튼 (오른쪽 정렬) ────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.only(right: 20),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _SmallRetakeButton(
-                              label: '성향 분석\n다시 하기',
-                              onTap: _retakeMyPersonality,
-                            ),
-                            const SizedBox(width: 8),
-                            _SmallRetakeButton(
-                              label: '이상향 설정\n다시 하기',
-                              onTap: _retakeIdealPersonality,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 20),
                     // ── 활동 기록 히트맵 ────────────────────────────────────
                     Padding(
@@ -460,6 +438,25 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    // ── 재검사 링크 ──────────────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          _RetakeTextButton(
+                            label: '성향 분석 다시 하기',
+                            onTap: _retakeMyPersonality,
+                          ),
+                          const SizedBox(width: 16),
+                          _RetakeTextButton(
+                            label: '이상향 설정 다시 하기',
+                            onTap: _retakeIdealPersonality,
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -468,8 +465,8 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
   }
 }
 
-class _SmallRetakeButton extends StatelessWidget {
-  const _SmallRetakeButton({required this.label, required this.onTap});
+class _RetakeTextButton extends StatelessWidget {
+  const _RetakeTextButton({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
@@ -478,23 +475,15 @@ class _SmallRetakeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 100,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF2F2F2),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'Pretendard',
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
-            height: 20 / 13,
-            color: Color(0xFF444444),
-          ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'Pretendard',
+          fontWeight: FontWeight.w400,
+          fontSize: 12,
+          color: Color(0xFFAAAAAA),
+          decoration: TextDecoration.underline,
+          decorationColor: Color(0xFFAAAAAA),
         ),
       ),
     );
