@@ -26,6 +26,8 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
   int _selectedYear = DateTime.now().year;
   bool _isLoading = true;
 
+  static const _traitLabels = ['모험적', '사색적', '외향적', '주도적', '다정함', '논리적'];
+
   @override
   void initState() {
     super.initState();
