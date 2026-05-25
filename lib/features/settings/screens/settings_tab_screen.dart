@@ -26,6 +26,8 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
   int _selectedYear = DateTime.now().year;
   bool _isLoading = true;
 
+  static const _traitLabels = ['모험적', '사색적', '외향적', '주도적', '다정함', '논리적'];
+
   @override
   void initState() {
     super.initState();
@@ -357,26 +359,104 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    // ── 재검사 버튼 (오른쪽 정렬) ────────────────────────────
+                    const SizedBox(height: 20),
+                    // ── 활동 기록 히트맵 ────────────────────────────────────
                     Padding(
-                      padding: const EdgeInsets.only(right: 20),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _SmallRetakeButton(
-                              label: '성향 분석\n다시 하기',
-                              onTap: _retakeMyPersonality,
-                            ),
-                            const SizedBox(width: 8),
-                            _SmallRetakeButton(
-                              label: '이상향 설정\n다시 하기',
-                              onTap: _retakeIdealPersonality,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x18000000),
+                              blurRadius: 24,
+                              offset: Offset(0, 4),
                             ),
                           ],
                         ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  '미션 기록',
+                                  style: TextStyle(
+                                    fontFamily: 'Pretendard',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: Color(0xFF262626),
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => setState(
+                                          () => _selectedYear--),
+                                      child: const Icon(
+                                        Icons.chevron_left,
+                                        size: 18,
+                                        color: Color(0xFF6F6F6F),
+                                      ),
+                                    ),
+                                    Text(
+                                      '$_selectedYear',
+                                      style: const TextStyle(
+                                        fontFamily: 'Pretendard',
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13,
+                                        color: Color(0xFF444444),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: _selectedYear <
+                                              DateTime.now().year
+                                          ? () => setState(
+                                              () => _selectedYear++)
+                                          : null,
+                                      child: Icon(
+                                        Icons.chevron_right,
+                                        size: 18,
+                                        color: _selectedYear <
+                                                DateTime.now().year
+                                            ? const Color(0xFF6F6F6F)
+                                            : const Color(0xFFCCCCCC),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            MissionHeatmap(
+                              history: _missionHistory,
+                              year: _selectedYear,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // ── 재검사 링크 ──────────────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          _RetakeTextButton(
+                            label: '성향 분석 다시 하기',
+                            onTap: _retakeMyPersonality,
+                          ),
+                          const SizedBox(width: 16),
+                          _RetakeTextButton(
+                            label: '이상향 설정 다시 하기',
+                            onTap: _retakeIdealPersonality,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -468,8 +548,8 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
   }
 }
 
-class _SmallRetakeButton extends StatelessWidget {
-  const _SmallRetakeButton({required this.label, required this.onTap});
+class _RetakeTextButton extends StatelessWidget {
+  const _RetakeTextButton({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
@@ -478,23 +558,15 @@ class _SmallRetakeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 100,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF2F2F2),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'Pretendard',
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
-            height: 20 / 13,
-            color: Color(0xFF444444),
-          ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'Pretendard',
+          fontWeight: FontWeight.w400,
+          fontSize: 12,
+          color: Color(0xFFAAAAAA),
+          decoration: TextDecoration.underline,
+          decorationColor: Color(0xFFAAAAAA),
         ),
       ),
     );

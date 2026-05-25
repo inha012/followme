@@ -18,10 +18,10 @@ class MissionHeatmap extends StatelessWidget {
   ];
   static const _colors = [
     Color(0xFFEBEBEB), // 0개 — 없음
-    Color(0xFFD5EED5), // 1개 — 매우 연한 연두
-    Color(0xFFA3D4A3), // 2개 — 연한 연두
-    Color(0xFF66B566), // 3개 — 연두
-    Color(0xFF2E7D32), // 4개 — 진한 연두
+    Color(0xFFCCE8E8), // 1개 — 매우 연한 teal
+    Color(0xFF8EC8C8), // 2개 — 연한 teal
+    Color(0xFF4AA8A8), // 3개 — teal
+    Color(0xFF208484), // 4개 — 진한 teal
   ];
 
   @override
