@@ -23,6 +23,8 @@ class _SettingsTabScreenState extends State<SettingsTabScreen> {
   Map<int, double> _todayGains = {};
   bool _isLoading = true;
 
+  static const _traitLabels = ['모험적', '사색적', '외향적', '주도적', '다정함', '논리적'];
+
   @override
   void initState() {
     super.initState();
