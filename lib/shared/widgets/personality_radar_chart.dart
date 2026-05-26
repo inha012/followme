@@ -190,7 +190,7 @@ class _RadarPainter extends CustomPainter {
               fontFamily: 'Pretendard',
               fontSize: 9,
               fontWeight: FontWeight.w700,
-              color: Color(0xFFB8920E),
+              color: Color(0xFF208484),
             ),
           ),
           textDirection: TextDirection.ltr,
