@@ -54,12 +54,11 @@ class _StartupRouterState extends State<_StartupRouter> {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: CircularProgressIndicator(color: Color(0xFF208484)),
-      ),
+      body: Center(child: CircularProgressIndicator(color: Color(0xFF208484))),
     );
   }
 }
 
 // 테스트용: 온보딩 건너뛰고 바로 SignupScreen으로 시작하려면 아래 주석 해제 후 위 home을 교체
 // home: const SignupScreen(),
+// home: const _StartupRouter(),

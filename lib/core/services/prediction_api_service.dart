@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:cupertino_http/cupertino_http.dart';
 import 'package:follow_me/core/constants/app_constants.dart';
 import 'package:follow_me/core/services/user_data_service.dart';
-import 'package:follow_me/features/daily_prediction/models/prediction_result.dart';
 import 'package:follow_me/features/diary/data/diary_database.dart';
 
 http.Client _buildClient() {
@@ -29,11 +28,13 @@ class PredictionApiService {
       final idealScores = await UserDataService.getIdealScores();
       final timetable   = await UserDataService.getTimetable();
 
-      // 오늘 작성된 일기만 추출
+      // 어제 작성된 일기 추출 (RAG 검색 기준)
       final allDiaries = await DiaryDatabase.getAll();
-      final today = PredictionResult.todayKey();
-      final todayDiary = allDiaries
-          .where((d) => d.createdAt.toIso8601String().startsWith(today))
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final yesterdayKey =
+          '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+      final yesterdayDiary = allDiaries
+          .where((d) => d.createdAt.toIso8601String().startsWith(yesterdayKey))
           .toList();
 
       final userId = await UserDataService.getUserId();
@@ -46,7 +47,7 @@ class PredictionApiService {
         'my_scores':    myScores,
         'ideal_scores': idealScores,
         'schedule':     timetable.map((e) => e.toMap()).toList(),
-        'diary':        todayDiary.isEmpty ? null : todayDiary.first.text,
+        'diary':        yesterdayDiary.isEmpty ? null : yesterdayDiary.first.text,
       };
 
       final uri = Uri.parse('${AppConstants.serverBaseUrl}/predict');
